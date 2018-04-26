@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
+
 const Schema = mongoose.Schema;
 const collection = 'fileUpload';
-
 const fileUploadSchema = new Schema(
   {
     ownerId: {
@@ -23,8 +23,8 @@ const fileUploadSchema = new Schema(
     }
   },
   {
-    collection: collection
+    collection
   }
 );
 
-export default mongoose.model('fileUpload', fileUploadSchema);
+export default mongoose.model(collection, fileUploadSchema);

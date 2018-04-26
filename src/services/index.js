@@ -1,45 +1,34 @@
-import path from 'path';
 import express from 'express';
-import mongoose, { mongo } from 'mongoose';
 import multer from 'multer';
-import gridfsStorage from 'multer-gridfs-storage';
-import grid from 'gridfs-stream';
 import crypto from 'crypto';
-import fileUpload from '../models/fileUpload';
 import config from '../config';
+import { existsSync, mkdirSync } from 'fs';
+import dbQuery from '../library/query';
+
 const router = express.Router();
+const folderPath = './public/uploads';
 
-const conn = mongoose.createConnection(config.mongooseUrl);
-
-let gfs;
-
-conn.once('open', () => {
-  gfs = grid(conn.db, mongoose.mongo);
-  gfs.collection('upload');
-});
-
-const storage = new gridfsStorage({
-  url: config.mongooseUrl,
-  file: async (req, file) => {
-    try {
-      crypto.randomBytes(16, (err, buf) => {
-        const fileName = buf.toString('hex') + path.extname(file.originalname);
-        const fileInfo = {
-          fileName,
-          bucketName: 'upload'
-        };
-        return fileInfo;
-      })
-    } catch (err) {
-      return err;
-    }
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!existsSync(folderPath))
+      mkdirSync(folderPath);
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    crypto.randomBytes(16, (err, buf) => {
+      const fileType = file.originalname.split('.')[1];
+      const fileName = buf.toString('hex') + '-' + Date.now() + '.' + fileType;
+      cb(null, fileName);
+    });
   }
 });
 
 const upload = multer({ storage });
 
-router.post('/upload', upload.single('file'), (req, res) => {
-  res.send(req.file);
+router.post('/upload/:id', upload.single(config.fileInputName), async (req, res) => {
+  req.file['ownerId'] = req.params.id;
+  const result = await dbQuery.insert(req.file);
+  res.send(result);
 });
 
 export default router;
